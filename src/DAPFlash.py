@@ -71,19 +71,29 @@ def erase_bin(ui):
         ui.out.insert('end','\r\n')
 
 class std2tk(object): 
-    def __init__(self,tk):
+    def __init__(self, tk, max_progress=170):
         self._buff = ""
         self.tk = tk
+        self.max_progress = max_progress
+        # self.tk.down_progress = 0
+        
+
     def write(self, out_stream): 
-        self.tk.down_progress+=1
-        if(self.tk.down_progress>169):
-            self.tk.down_progress = 169
+        self.tk.down_progress += 1
+        if self.tk.down_progress > self.max_progress:
+            self.tk.down_progress = self.max_progress
+        
+        # 计算已完成比例
+        percent = self.tk.down_progress / self.max_progress
+        progress_blocks = int(percent * 20)  # 20 个格子显示进度条
+
+        # 更新输出框
         self.tk.out.edit_undo()
-        progress = (int)(self.tk.down_progress/17*2)
-        self.tk.out.insert('end','\r\n['+ \
-                           progress*'='+\
-                           +(20 - progress)*' '+\
-                           ']   %.2f%%\r\n'%(self.tk.down_progress/1.7))
+        self.tk.out.insert('end', '\r\n[' +
+                           '='*progress_blocks +
+                           ' '*(20-progress_blocks) +
+                           ']   %.2f%%\r\n' % (percent*100))
+
     def flush(self): 
         pass
 
@@ -120,23 +130,35 @@ class PyocdApp:
         self.gui = ttk.Frame(self.toplevel1)
         self.labelframe1 = ttk.Labelframe(self.gui)
         self.binchooserinput = PathChooserInput(self.labelframe1)
-        self.binchooserinput.configure(state='normal', title='bin文件', type='file')
+        self.binchooserinput.configure(
+            state='normal',
+            title='选择固件文件',
+            type='file',
+            filetypes=[('Firmware Files', '*.bin *.hex *.axf *.elf')]  # 限制文件类型
+        )
         self.binchooserinput.pack(fill='x', side='top')
-        self.labelframe1.configure(text='选择Bin文件')
+        self.labelframe1.configure(text='选择固件文件')
         self.labelframe1.pack(fill='x', side='top')
         
         self.labelframe2 = ttk.Labelframe(self.gui)
         self.pathchooserinput1 = PathChooserInput(self.labelframe2)
-        self.pathchooserinput1.configure(state='normal', title='bin文件', type='directory')
+        self.pathchooserinput1.configure(
+            state='normal',
+            title='选择yaml配置文件',
+            type='file',
+            filetypes=[('YAML Files', '*.yaml *.yml')]  # 仅允许选择yaml文件
+        )
         self.pathchooserinput1.pack(fill='x', side='top')
-        self.labelframe2.configure(text='选择配置文件所在文件夹')
+        self.labelframe2.configure(text='选择yaml配置文件')
         self.labelframe2.pack(fill='x', side='top')
-        self.frame1 = ttk.Frame(self.gui)
 
+        self.frame1 = ttk.Frame(self.gui)
+        
         self.out = tk.Text(self.frame1,undo=True,maxundo = 1)
         self.out.configure(background='#000000',font='{宋体} 10 {}', foreground='#00ff00', height='9', relief='groove')
         self.out.configure(width='50')
         self.out.pack(anchor='center', expand='true', fill='both', side='top')
+        
         
         self.erase = tk.Button(self.frame1)
         self.erase.configure(relief='groove', text='擦除程序')
@@ -158,7 +180,7 @@ class PyocdApp:
                             + str((self.toplevel1.winfo_screenwidth() - 320) // 2) + '+'
                             + str((self.toplevel1.winfo_screenheight() - 480) // 2 - 18))
 
-        self.toplevel1.title('dap_download')
+        self.toplevel1.title('DAPFlash')
         self.toplevel1.resizable(False, False)
         self.toplevel1.attributes('-alpha',0.95)        
         
@@ -177,16 +199,18 @@ class PyocdApp:
         if itemid == 'about':
             tk.messagebox.showinfo(title="关于",message = show_about)
         elif itemid =='help':
-            webbrowser.open('https://github.com/xxxxx/README.md',new=0)
+            webbrowser.open('https://github.com/ASh-en/DAPFlash/README.md',new=0)
         elif itemid =='download':  
             if tk.messagebox.askokcancel("download", "是否转到Github?"):
-                webbrowser.open('https://github.com/xxxxxx',new=0)      
+                webbrowser.open('https://github.com/ASh-en/DAPFlash',new=0)      
 
     def download(self):
         global bin_path
         global yaml_path
-        bin_path = self.binchooserinput.cget('path')
-        yaml_path = self.pathchooserinput1.cget('path')
+        bin_path = self.binchooserinput.cget('path')          # 用户选择的 bin 文件
+        yaml_file_path = self.pathchooserinput1.cget('path')  # 用户选择的 YAML 文件
+        yaml_path = os.path.dirname(yaml_file_path)           # 提取 YAML 文件所在目录
+
         self.down_progress = 0
         if (bin_path and yaml_path):
             self.out.delete('1.0','end')
@@ -212,7 +236,9 @@ class PyocdApp:
             
     def erasechip(self):
         global yaml_path
-        yaml_path = self.pathchooserinput1.cget('path')
+        yaml_file_path = self.pathchooserinput1.cget('path')  # 用户选择的 YAML 文件
+        yaml_path = os.path.dirname(yaml_file_path)           # 提取目录
+
         if yaml_path:
             self.out.delete('1.0','end')
             self.out.insert('end',"dir:%s"%(yaml_path))

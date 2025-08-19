@@ -1,14 +1,17 @@
-# -*- mode: python ; coding: utf-8 -*-
 
+# -*- mode: python ; coding: utf-8 -*-
+# 非conda环境，以下两行可以省去，如果为conda虚拟环境，需要使用对应的bin路径
+import os
+os.environ['PATH'] = f"{os.environ['PATH']};C:\\anaconda3\\Library\\bin\\"
 
 block_cipher = None
 
 
 a = Analysis(
-    ['../src/DAPFlash.py'],
+    ['../src/DAPFLash.py'],
     pathex=[],
     binaries=[],
-    datas=[('./venv/Lib/site-packages/libusb_package/libusb-1.0.dll', '.'),('./venv/Lib/site-packages/cmsis_pack_manager/cmsis_pack_manager/native.so','./cmsis_pack_manager/cmsis_pack_manager/.')],
+    datas=[('./venv/Lib/site-packages/libusb_package/libusb-1.0.dll', '.'),('./venv/Lib/site-packages/pyocd/debug/sequences/sequences.lark','pyocd/debug/sequences'),('./venv/Lib/site-packages/cmsis_pack_manager/cmsis_pack_manager/native.so','./cmsis_pack_manager/cmsis_pack_manager/.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -17,7 +20,7 @@ a = Analysis(
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
-    noarchive=False,
+    noarchive=True,
 )
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
@@ -28,7 +31,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='dap_downloader',
+    name='DAPFLash',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
